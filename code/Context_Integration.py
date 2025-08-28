@@ -44,7 +44,7 @@ class AllLayerContextualAnalyzer:
         """Generate diverse contextual test cases"""
         context_list = ['Intensity',  'Scale variation', 'Sarcasm', 'Domain context', 'Multiple intensifier', 'Complex double negation']
 
-        df_cases = pd.read_csv('../../preprare_data/sentiment_800_pairs.csv')
+        df_cases = pd.read_csv('../data/sentiment_2000_pairs.csv')
         df_cases = df_cases[['clean_text', 'corrupt_text', 'Context']]
         cases = {}
 

@@ -80,12 +80,12 @@ class LexicalTestSuite:
 
         self.intensifiers = ["very", "extremely", "absolutely", "quite", "rather"]
 
-    def generate_lexical_pairs(self, num_pairs: int = 50) -> List[LexicalPair]:
+    def generate_lexical_pairs(self, num_pairs: int = 200) -> List[LexicalPair]:
         """Generate clean/corrupt pairs for lexical testing"""
         pairs = []
-        data = pd.read_csv('./sentiment_800_pairs.csv')
+        data = pd.read_csv('./sentiment_2000_pairs.csv')
         # Simple positive/negative swaps
-        data = data.iloc[0:100,:]
+        data = data.iloc[0:200,:]
         for i in range(data.shape[0]):
             temp_data = data.iloc[i]
             pos_word = temp_data['target_tokens'].split(',')[0].strip()
@@ -116,53 +116,6 @@ class LexicalTestSuite:
                 clean_sentiment=clean_sentiment,  # Expected positive score
                 corrupt_sentiment=corrupt_sentiment  # Expected negative score
             ))
-
-
-        # for i in range(num_pairs // 2):
-        #     context = np.random.choice(self.neutral_contexts)
-        #     pos_word = np.random.choice(self.positive_words)
-        #     neg_word = np.random.choice(self.negative_words)
-        #
-        #     clean_text = context.format(pos_word)
-        #     corrupt_text = context.format(neg_word)
-        #
-        #
-        #     # Find target position (simplified - assumes single token)
-        #     target_pos = self._find_target_position(clean_text, pos_word)
-
-            # pairs.append(LexicalPair(
-            #     clean_text=clean_text,
-            #     corrupt_text=corrupt_text,
-            #     target_word_clean=pos_word,
-            #     target_word_corrupt=neg_word,
-            #     target_position=target_pos,
-            #     expected_sentiment_flip=True,
-            #     clean_sentiment=0.8,  # Expected positive score
-            #     corrupt_sentiment=0.2  # Expected negative score
-            # ))
-
-        # Add intensified versions
-        # for i in range(num_pairs // 2):
-        #     context = "The movie was {} {}"
-        #     intensifier = np.random.choice(self.intensifiers)
-        #     pos_word = np.random.choice(self.positive_words)
-        #     neg_word = np.random.choice(self.negative_words)
-        #
-        #     clean_text = context.format(intensifier, pos_word)
-        #     corrupt_text = context.format(intensifier, neg_word)
-        #
-        #     target_pos = self._find_target_position(clean_text, pos_word)
-        #
-        #     pairs.append(LexicalPair(
-        #         clean_text=clean_text,
-        #         corrupt_text=corrupt_text,
-        #         target_word_clean=pos_word,
-        #         target_word_corrupt=neg_word,
-        #         target_position=target_pos,
-        #         expected_sentiment_flip=True,
-        #         clean_sentiment=0.9,  # Intensified positive
-        #         corrupt_sentiment=0.1  # Intensified negative
-        #     ))
 
         return pairs
 
