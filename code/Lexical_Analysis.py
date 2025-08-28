@@ -1,6 +1,3 @@
-# STAGE 1: LEXICAL DETECTION (LAYERS 0-3) - IMPLEMENTATION & TESTING
-# Complete implementation guide for testing early layer sentiment processing
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -19,8 +16,8 @@ import random
 from tqdm import  tqdm
 
 
-# my_seed = random.randint(1, 100)
-my_seed = 6
+my_seed = random.randint(1, 100)
+# my_seed = 6
 print('Seed = ', my_seed)
 
 random.seed(my_seed)
@@ -40,7 +37,20 @@ os.environ['PYTHONHASHSEED'] = str(my_seed)
 
 @dataclass
 class LexicalPair:
-    """Structure for lexical sentiment pairs"""
+    """
+    Represents a clean vs corrupted lexical test case for sentiment analysis.
+
+    Attributes:
+        clean_text (str): Original input sentence containing a sentiment word
+        corrupt_text (str): Modified version with swapped sentiment word
+        target_word_clean (str): The positive sentiment word in clean text
+        target_word_corrupt (str): The negative sentiment word in corrupt text
+        target_position (int): Token index of the target word in the sequence
+        expected_sentiment_flip (bool): Should sentiment flip when patched?
+        clean_sentiment (float): Expected sentiment score for clean text
+        corrupt_sentiment (float): Expected sentiment score for corrupt text
+    """
+
     clean_text: str
     corrupt_text: str
     target_word_clean: str  # The sentiment word in clean text
@@ -52,9 +62,25 @@ class LexicalPair:
 
 
 class LexicalTestSuite:
-    """Generate and manage lexical test cases"""
+    """
+    Generates and manages lexical test pairs for probing sentiment at word level.
+
+    Contains predefined lists of:
+    - positive_words: 15 positive sentiment adjectives
+    - negative_words: 15 negative sentiment adjectives
+    - neutral_contexts: 8 sentence templates
+    - intensifiers: Common amplifying words
+    """
 
     def __init__(self):
+        """
+                Initialize test suite with lists of positive and negative words.
+
+                Args:
+                    positive_words (list): List of positive sentiment words.
+                    negative_words (list): List of negative sentiment words.
+        """
+
         self.positive_words = [
             "amazing", "fantastic", "excellent", "wonderful", "brilliant",
             "outstanding", "superb", "magnificent", "terrific", "awesome",
@@ -80,10 +106,21 @@ class LexicalTestSuite:
 
         self.intensifiers = ["very", "extremely", "absolutely", "quite", "rather"]
 
-    def generate_lexical_pairs(self, num_pairs: int = 200) -> List[LexicalPair]:
-        """Generate clean/corrupt pairs for lexical testing"""
+    def generate_lexical_pairs(self) -> List[LexicalPair]:
+        """
+                Generate lexical test pairs from CSV data for sentiment analysis probing.
+
+                Reads from '../data/sentiment_2000_pairs.csv' and processes first 200 pairs.
+                Creates clean/corrupt text pairs by swapping positive/negative sentiment words.
+
+                Returns:
+                    List[LexicalPair]: Test pairs with sentiment words swapped, including:
+                    - Difficulty-based sentiment scores (easy: 1.0/0.0, medium: 0.8/0.2, hard: 0.6/0.4)
+                    - Target word positions extracted from CSV
+                    - Expected sentiment flip behavior
+        """
         pairs = []
-        data = pd.read_csv('./sentiment_2000_pairs.csv')
+        data = pd.read_csv('../data/sentiment_2000_pairs.csv')
         # Simple positive/negative swaps
         data = data.iloc[0:200,:]
         for i in range(data.shape[0]):
@@ -134,7 +171,17 @@ class LexicalTestSuite:
 # =============================================================================
 
 class GPT2SentimentProbe(nn.Module):
-    """Linear probe for sentiment classification on GPT-2 representations"""
+    """
+    Linear probe for sentiment classification on GPT-2 representations.
+
+    Architecture:
+    - Input: GPT-2 hidden representations (768-dimensional)
+    - Dropout layer (0.1 default)
+    - Linear classifier to 2 classes (negative, positive)
+
+    forward(representations: torch.Tensor) -> torch.Tensor:
+        Forward pass returning sentiment logits [batch_size, 2]
+    """
 
     def __init__(self, d_model: int = 768, dropout: float = 0.1):
         super().__init__()
@@ -153,7 +200,15 @@ class GPT2SentimentProbe(nn.Module):
 
 
 def create_sentiment_training_data():
-    """Create simple training data for the probe"""
+    """
+    Create simple training data for the sentiment probe.
+
+    Returns:
+        texts (list): 20 example sentences (10 positive, 10 negative)
+        labels (list): Binary labels (1=positive, 0=negative)
+
+    Used to train the linear probe on GPT-2 representations for sentiment classification.
+    """
     positive_examples = [
         "This movie is amazing and fantastic!",
         "I love this wonderful experience.",
@@ -191,7 +246,14 @@ def create_sentiment_training_data():
 # =============================================================================
 
 class LexicalPatchingAnalyzer:
-    """Analyze lexical processing in early layers (0-3)"""
+    """
+    Main analyzer for lexical processing in early transformer layers (0-11).
+
+    Supports three sentiment classification methods:
+    1. "probe": Linear probe trained on GPT-2 representations
+    2. "external": RoBERTa-based sentiment classifier
+    3. "simple": Keyword-based classification
+    """
 
     def __init__(self, model_name: str = "gpt2", sentiment_method: str = "probe"):
         self.model = HookedTransformer.from_pretrained(model_name)
@@ -210,7 +272,19 @@ class LexicalPatchingAnalyzer:
 
 
     def _setup_sentiment_classifier(self, method: str = "probe"):
-        """Setup sentiment classification with multiple approaches"""
+        """
+        Initialize sentiment classification system.
+
+        Args:
+            method: Classification approach ("probe", "external", "simple")
+
+        Returns:
+            Configured sentiment classifier based on chosen method
+
+        - "probe": Trains/loads linear probe on GPT-2 representations
+        - "external": Uses cardiffnlp/twitter-roberta-base-sentiment-latest
+        - "simple": Keyword matching with predefined word lists
+        """
 
         if method == "probe":
             return self._setup_linear_probe()
@@ -318,7 +392,17 @@ class LexicalPatchingAnalyzer:
         return {"positive": positive_words, "negative": negative_words}
 
     def _get_sentiment(self, text: str) -> float:
-        """Get sentiment score for text"""
+        """
+        Get sentiment score for input text using configured classifier.
+
+        Args:
+            text: Input sentence to analyze
+
+        Returns:
+            float: Sentiment probability (0.0 = negative, 1.0 = positive)
+
+        Delegates to appropriate method based on self.sentiment_method
+        """
 
         if self.sentiment_method == "probe":
             return self._get_sentiment_probe(text)
@@ -419,7 +503,34 @@ class LexicalPatchingAnalyzer:
         return self._get_sentiment_simple(text)
 
     def run_lexical_analysis(self, test_pairs: List[LexicalPair]) -> pd.DataFrame:
-        """Run complete lexical analysis on test pairs"""
+        """
+        Run complete lexical analysis using activation patching.
+
+        Args:
+            test_pairs: List of LexicalPair objects to analyze
+
+        Returns:
+            pd.DataFrame with columns:
+            - pair_idx: Test pair identifier
+            - layer: Transformer layer (0-11)
+            - clean_text: Original sentence
+            - target_word: Sentiment word being tested
+            - target_position: Token position of sentiment word
+            - baseline_sentiment: Sentiment score for clean text
+            - corrupt_sentiment: Sentiment score for corrupt text
+            - full_layer_effect: Effect of patching entire layer
+            - position_effect: Effect of patching specific position
+            - control_effect: Effect of patching control position
+            - position_specificity: position_effect - control_effect
+            - expected_flip: Whether sentiment should flip
+
+        Process:
+        1. For each test pair and each layer (0-11):
+        2. Test full layer patching (replace entire layer activations)
+        3. Test position-specific patching (replace single token position)
+        4. Test control position patching (off-target position)
+        5. Calculate effect sizes as absolute differences in sentiment
+        """
         results = []
 
         print(f"Analyzing {len(test_pairs)} lexical pairs across layers {self.target_layers}")
@@ -431,17 +542,10 @@ class LexicalPatchingAnalyzer:
             clean_sentiment = self._get_sentiment(pair.clean_text)
             corrupt_sentiment = self._get_sentiment(pair.corrupt_text)
 
-            # print(f"  Clean: '{pair.clean_text}' -> {clean_sentiment:.3f}")
-            # print(f"  Corrupt: '{pair.corrupt_text}' -> {corrupt_sentiment:.3f}")
-
             # Test each layer
             for layer in self.target_layers:
                 # Test full layer patching
                 full_effect = self._test_layer_patching(pair, layer, method="full")
-
-                # print('\nLayer: ', layer)
-                # print('Full effect: ', full_effect)
-                # print('clean_text', pair.clean_text)
 
                 # Test position-specific patching
                 pos_effect = self._test_position_patching(pair, layer, pair.target_position)
@@ -468,7 +572,22 @@ class LexicalPatchingAnalyzer:
         return pd.DataFrame(results)
 
     def _test_layer_patching(self, pair: LexicalPair, layer: int, method: str = "full") -> float:
-        """Test effect of patching entire layer"""
+        """
+        Test effect of patching entire layer with corrupt activations.
+
+        Args:
+            pair: Test case with clean/corrupt texts
+            layer: Target layer to patch
+            method: Patching method ("full" for entire layer)
+
+        Returns:
+            float: Effect size (absolute change in sentiment score)
+
+        Process:
+        1. Get clean and corrupt activations from specified layer
+        2. Run clean input with corrupt activations patched in
+        3. Measure sentiment change compared to baseline
+        """
         hook_name = f"blocks.{layer}.hook_resid_post"
 
         # Get caches
@@ -499,7 +618,23 @@ class LexicalPatchingAnalyzer:
             return 0.0
 
     def _test_position_patching(self, pair: LexicalPair, layer: int, position: int) -> float:
-        """Test effect of patching specific position in layer"""
+        """
+        Test effect of patching specific token position in layer.
+
+        Args:
+            pair: Test case with clean/corrupt texts
+            layer: Target layer to patch
+            position: Token position to patch
+
+        Returns:
+            float: Effect size (absolute change in sentiment score)
+
+        Process:
+        1. Get activations for clean and corrupt inputs
+        2. Replace activation at specified position with corrupt version
+        3. Measure resulting sentiment change
+        4. Used to test position-specificity of lexical effects
+        """
         hook_name = f"blocks.{layer}.hook_resid_post"
 
         clean_tokens = self.model.to_tokens(pair.clean_text)
@@ -535,13 +670,35 @@ class LexicalPatchingAnalyzer:
 # =============================================================================
 
 class Stage1PerformanceTester:
-    """Test and validate Stage 1 hypotheses"""
+    """
+    Test and validate Stage 1 hypotheses about lexical processing.
+
+    Tests four key hypotheses:
+    1. Lexical sensitivity: Early layers more sensitive to lexical changes
+    2. Early layer dominance: Layers 0-3 show strongest effects
+    3. Position specificity: Effects strongest at sentiment word positions
+    4. Context independence: Stage 1 processing is context-independent
+    """
 
     def __init__(self, analyzer: LexicalPatchingAnalyzer):
         self.analyzer = analyzer
 
     def test_stage1_hypotheses(self, results_df: pd.DataFrame) -> Dict:
-        """Test all Stage 1 specific hypotheses"""
+        """
+        Run all Stage 1 hypothesis tests on experimental results.
+
+        Args:
+            results_df: DataFrame from run_lexical_analysis()
+
+        Returns:
+            Dict with test results for each hypothesis:
+            - "lexical_sensitivity": Early vs late layer sensitivity comparison
+            - "early_layer_dominance": Whether layers 0-3 show max effects
+            - "position_specificity": Statistical test of position effects
+            - "context_independence": Consistency of effects across contexts
+
+        Each test returns hypothesis_supported (0/1) plus detailed metrics.
+        """
 
         tests = {
             "lexical_sensitivity": self._test_lexical_sensitivity(results_df),
@@ -553,7 +710,15 @@ class Stage1PerformanceTester:
         return tests
 
     def _test_lexical_sensitivity(self, df: pd.DataFrame) -> Dict:
-        """Test: Early layers should be most sensitive to lexical changes"""
+        """
+        Test: Early layers should be most sensitive to lexical changes.
+
+        Compares target position effects vs control position effects across layers.
+        Expects higher sensitivity ratios (control/target) in early layers.
+
+        Returns:
+            Dict with early/late sensitivity comparison and support verdict.
+        """
 
         # Compare target position effects vs control position effects
         target_effects = df.groupby('layer')['position_effect'].mean()
@@ -580,7 +745,15 @@ class Stage1PerformanceTester:
         }
 
     def _test_early_layer_dominance(self, df: pd.DataFrame) -> Dict:
-        """Test: Layers 0-3 should show strongest lexical effects"""
+        """
+        Test: Layers 0-3 should show strongest lexical effects.
+
+        Finds layer with maximum average position effect.
+        Passes if maximum effect occurs in layers 0-3.
+
+        Returns:
+            Dict with max effect layer, value, and support verdict.
+        """
 
         layer_effects = df.groupby('layer')['position_effect'].mean()
 
@@ -602,7 +775,15 @@ class Stage1PerformanceTester:
         }
 
     def _test_position_specificity(self, df: pd.DataFrame) -> Dict:
-        """Test: Effects should be strongest at sentiment word positions"""
+        """
+        Test: Effects should be strongest at sentiment word positions.
+
+        Uses t-test to check if position_specificity significantly > 0.
+        position_specificity = position_effect - control_effect
+
+        Returns:
+            Dict with mean specificity, t-statistic, p-value, and support verdict.
+        """
 
         # Compare effects at target positions vs other positions
         position_specificity = df['position_specificity'].mean()
@@ -628,12 +809,15 @@ class Stage1PerformanceTester:
         }
 
     def _test_context_independence(self, df: pd.DataFrame) -> Dict:
-        """Test: Stage 1 should be relatively context-independent"""
+        """
+        Test: Stage 1 should be relatively context-independent.
 
-        # Group by different sentence contexts and see if effects are consistent
-        # This requires more sophisticated analysis of your test cases
+        Measures consistency of effects across different sentence contexts.
+        Lower standard deviation indicates more context-independent processing.
 
-        # Simplified version: check if effects are consistent across pairs
+        Returns:
+            Dict comparing early vs late layer consistency and support verdict.
+        """
         effect_consistency = df.groupby('layer')['position_effect'].std()
 
         # Lower standard deviation indicates more consistent (context-independent) effects
@@ -651,69 +835,6 @@ class Stage1PerformanceTester:
             "hypothesis_supported": hypothesis_supported  # Arbitrary threshold
         }
 
-
-# =============================================================================
-# 5. VISUALIZATION AND ANALYSIS
-# =============================================================================
-
-class Stage1Visualizer:
-    """Create visualizations for Stage 1 analysis"""
-
-    @staticmethod
-    def plot_layer_effects(results_df: pd.DataFrame):
-        """Plot patching effects by layer"""
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-
-        # Layer-wise effects
-        layer_effects = results_df.groupby('layer')['position_effect'].mean()
-        axes[0, 0].bar(layer_effects.index, layer_effects.values)
-        axes[0, 0].set_title('Average Position Effect by Layer')
-        axes[0, 0].set_xlabel('Layer')
-        axes[0, 0].set_ylabel('Effect Size')
-
-        # Position specificity by layer
-        pos_spec = results_df.groupby('layer')['position_specificity'].mean()
-        axes[0, 1].bar(pos_spec.index, pos_spec.values)
-        axes[0, 1].set_title('Position Specificity by Layer')
-        axes[0, 1].set_xlabel('Layer')
-        axes[0, 1].set_ylabel('Specificity (Target - Control)')
-
-        # Full layer effects
-        full_effects = results_df.groupby('layer')['full_layer_effect'].mean()
-        axes[1, 0].bar(full_effects.index, full_effects.values)
-        axes[1, 0].set_title('Full Layer Effect by Layer')
-        axes[1, 0].set_xlabel('Layer')
-        axes[1, 0].set_ylabel('Effect Size')
-
-        # Distribution of effects
-        results_df.boxplot(column='position_effect', by='layer', ax=axes[1, 1])
-        axes[1, 1].set_title('Distribution of Position Effects')
-
-        plt.tight_layout()
-        # plt.show()
-
-        plt.savefig(f"plot_{my_seed}.png")
-
-    @staticmethod
-    def plot_word_sensitivity_heatmap(results_df: pd.DataFrame):
-        """Create heatmap of word-specific effects"""
-        results_df.to_csv('test.csv', index=False)
-        # Pivot to create word x layer matrix
-        heatmap_data = results_df.pivot_table(
-            values='position_effect',
-            index='target_word',
-            columns='layer',
-            aggfunc='mean'
-        )
-        #Seed used 16
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(heatmap_data, annot=True, fmt='.3f', cmap='viridis')
-        plt.title('Sentiment Word Sensitivity by Layer')
-        plt.xlabel('Layer')
-        plt.ylabel('Target Sentiment Word')
-        # plt.show()
-        plt.savefig(f"hitmap_{my_seed}.png")
-
 # =============================================================================
 # 6. COMPLETE TESTING PIPELINE
 # =============================================================================
@@ -721,62 +842,38 @@ class Stage1Visualizer:
 def run_stage1_complete_analysis(sentiment_method: str = "probe"):
     """Complete pipeline for Stage 1 analysis"""
 
-    print("🚀 Starting Stage 1: Lexical Detection Analysis")
+    print("Starting Stage 1: Lexical Detection Analysis")
 
     # Step 1: Generate test data
     print("\n📊 Step 1: Generating lexical test pairs...")
     test_suite = LexicalTestSuite()
-    lexical_pairs = test_suite.generate_lexical_pairs(num_pairs=20)  # Start small
+    lexical_pairs = test_suite.generate_lexical_pairs()  # Start small
     print(f"Generated {len(lexical_pairs)} lexical test pairs")
 
     # Step 2: Initialize analyzer
-    print("\n🔧 Step 2: Initializing analyzer...")
+    print("Step 2: Initializing analyzer...")
     analyzer = LexicalPatchingAnalyzer(sentiment_method=sentiment_method)
 
     # Step 3: Run analysis
-    print("\n⚡ Step 3: Running patching experiments...")
+    print("Step 3: Running patching experiments...")
     results_df = analyzer.run_lexical_analysis(lexical_pairs)
 
     # Step 4: Test hypotheses
-    print("\n🧪 Step 4: Testing Stage 1 hypotheses...")
+    print("Step 4: Testing Stage 1 hypotheses...")
     tester = Stage1PerformanceTester(analyzer)
     hypothesis_results = tester.test_stage1_hypotheses(results_df)
 
     # Step 5: Print results
-    print("\n📋 Step 5: Results Summary")
+    print("Step 5: Results Summary")
     print("=" * 50)
 
     for test_name, test_results in hypothesis_results.items():
-        status = "✅ SUPPORTED" if test_results.get('hypothesis_supported', False) else "❌ NOT SUPPORTED"
+        status = "SUPPORTED" if test_results.get('hypothesis_supported', False) else "NOT SUPPORTED"
         print(f"{test_name.upper()}: {status}")
 
-    # Step 6: Visualize
-    print("\n📈 Step 6: Generating visualizations...")
-    try:
-        Stage1Visualizer.plot_layer_effects(results_df)
-        Stage1Visualizer.plot_word_sensitivity_heatmap(results_df)
-    except Exception as e:
-        print(f"Visualization error: {e}")
-
     # Step 7: Save results
-    results_df.to_csv('stage1_lexical_results.csv', index=False)
-
-    with open('stage1_hypothesis_tests.json', 'w') as f:
-        # Convert numpy types to Python native types for JSON serialization
-        serializable_results = {}
-        for key, value in hypothesis_results.items():
-            serializable_results[key] = {}
-            for subkey, subvalue in value.items():
-                if isinstance(subvalue, (np.int64, np.int32)):
-                    serializable_results[key][subkey] = int(subvalue)
-                elif isinstance(subvalue, (np.float64, np.float32)):
-                    serializable_results[key][subkey] = float(subvalue)
-                else:
-                    serializable_results[key][subkey] = subvalue
-
-        json.dump(serializable_results, f, indent=2)
-
-    print("\n🎉 Stage 1 analysis complete!")
+    results_df.to_csv('../result/Lexical_Analysis_Results.csv', index=False)
+    print("Stage 1 analysis complete!")
     print("Results saved to: stage1_lexical_results.csv")
     print("Hypothesis tests saved to: stage1_hypothesis_tests.json")
 
@@ -814,7 +911,7 @@ def test_sentiment_classifiers():
 
 def quick_test():
     """Quick test with minimal data for debugging"""
-    print("🔍 Running quick test...")
+    print("Running quick test...")
 
     # Create a few test pairs manually
     pairs = [
@@ -864,27 +961,11 @@ def quick_test():
 # =============================================================================
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='Run Stage 1 Lexical Detection Analysis')
-    # parser.add_argument('--method', choices=['probe', 'external', 'simple'],
-    #                     default='simple', help='Sentiment classification method')
-    # parser.add_argument('--quick', action='store_true',
-    #                     help='Run quick test with minimal data')
-    # parser.add_argument('--test-classifiers', action='store_true',
-    #                     help='Test all sentiment classifiers')
-
-    # args = parser.parse_args()
-
-    # if args.test_classifiers:
-    #     test_sentiment_classifiers()
-    # elif args.quick:
-    #     quick_test()
-    # else:
-
     # Run the complete Stage 1 analysis
     results, hypothesis_tests = run_stage1_complete_analysis(sentiment_method='probe')
 
     # Print key findings
-    print("\n🔍 Key Findings:")
+    print("Key Findings:")
     if not results.empty:
         best_layer = results.groupby('layer')['position_effect'].mean().idxmax()
         avg_specificity = results['position_specificity'].mean()
@@ -895,192 +976,3 @@ if __name__ == "__main__":
         print(f"- Number of pairs showing expected effects: {significant_pairs}")
     else:
         print("- No results generated")
-
-# =============================================================================
-# 9. ADDITIONAL UTILITY FUNCTIONS
-# =============================================================================
-
-# def load_and_analyze_results(results_file: str = 'stage1_lexical_results.csv'):
-#     """Load and re-analyze saved results"""
-#     try:
-#         results_df = pd.read_csv(results_file)
-
-#         print(f"Loaded results with {len(results_df)} rows")
-#         print("\nDataset summary:")
-#         print(results_df.describe())
-
-#         # Re-run visualizations
-#         print("\nGenerating visualizations from saved data...")
-#         Stage1Visualizer.plot_layer_effects(results_df)
-#         Stage1Visualizer.plot_word_sensitivity_heatmap(results_df)
-
-#         return results_df
-
-#     except FileNotFoundError:
-#         print(f"Results file {results_file} not found. Run analysis first.")
-#         return None
-
-
-# def compare_sentiment_methods():
-#     """Compare different sentiment classification methods"""
-#     print("🔄 Comparing sentiment classification methods...")
-
-#     test_texts = [
-#         "This movie is absolutely amazing!",
-#         "I hate this terrible experience.",
-#         "The service was okay.",
-#         "Brilliant and outstanding work!",
-#         "Poor and disappointing quality."
-#     ]
-
-#     methods = ["simple", "probe"]
-#     results = {method: [] for method in methods}
-
-#     for method in methods:
-#         print(f"\nTesting {method} method...")
-#         try:
-#             analyzer = LexicalPatchingAnalyzer(sentiment_method=method)
-
-#             for text in test_texts:
-#                 sentiment = analyzer._get_sentiment(text)
-#                 results[method].append(sentiment)
-#                 print(f"  '{text}' -> {sentiment:.3f}")
-
-#         except Exception as e:
-#             print(f"  Error with {method}: {e}")
-#             results[method] = [0.5] * len(test_texts)
-
-#     # Compare results
-#     print("\n📊 Comparison Summary:")
-#     comparison_df = pd.DataFrame(results, index=test_texts)
-#     print(comparison_df)
-
-#     # Calculate correlation between methods
-#     if len(results["simple"]) == len(results["probe"]):
-#         correlation = np.corrcoef(results["simple"], results["probe"])[0, 1]
-#         print(f"\nCorrelation between methods: {correlation:.3f}")
-
-#     return comparison_df
-
-
-# def debug_patching_step_by_step():
-#     """Debug the patching process step by step"""
-#     print("🐛 Debug: Step-by-step patching analysis")
-
-#     # Simple test case
-#     clean_text = "The movie was amazing"
-#     corrupt_text = "The movie was terrible"
-
-#     analyzer = LexicalPatchingAnalyzer(sentiment_method="simple")
-
-#     print(f"Clean text: '{clean_text}'")
-#     print(f"Corrupt text: '{corrupt_text}'")
-
-#     # Test tokenization
-#     clean_tokens = analyzer.model.to_tokens(clean_text)
-#     corrupt_tokens = analyzer.model.to_tokens(corrupt_text)
-
-#     print(f"Clean tokens: {clean_tokens}")
-#     print(f"Corrupt tokens: {corrupt_tokens}")
-#     print(f"Clean token strings: {[analyzer.model.to_string(t) for t in clean_tokens[0]]}")
-#     print(f"Corrupt token strings: {[analyzer.model.to_string(t) for t in corrupt_tokens[0]]}")
-
-#     # Test sentiment classification
-#     clean_sentiment = analyzer._get_sentiment(clean_text)
-#     corrupt_sentiment = analyzer._get_sentiment(corrupt_text)
-
-#     print(f"Clean sentiment: {clean_sentiment:.3f}")
-#     print(f"Corrupt sentiment: {corrupt_sentiment:.3f}")
-
-#     # Test caching
-#     with torch.no_grad():
-#         _, clean_cache = analyzer.model.run_with_cache(clean_tokens)
-#         _, corrupt_cache = analyzer.model.run_with_cache(corrupt_tokens)
-
-#     print(f"Cache keys: {list(clean_cache.keys())[:5]}...")  # Show first 5 keys
-
-#     # Test single layer patching
-#     layer = 1
-#     hook_name = f"blocks.{layer}.hook_resid_post"
-
-#     print(f"Testing layer {layer} patching...")
-#     print(f"Hook name: {hook_name}")
-#     print(f"Clean cache shape: {clean_cache[hook_name].shape}")
-#     print(f"Corrupt cache shape: {corrupt_cache[hook_name].shape}")
-
-#     # Simple position patch test
-#     def test_patch_hook(activation, hook):
-#         patched = activation.clone()
-#         patched[0, -1, :] = corrupt_cache[hook_name][0, -1, :]  # Patch last position
-#         return patched
-
-#     try:
-#         with torch.no_grad():
-#             with analyzer.model.hooks([(hook_name, test_patch_hook)]):
-#                 patched_sentiment = analyzer._get_sentiment_from_tokens(clean_tokens)
-
-#         print(f"Patched sentiment: {patched_sentiment:.3f}")
-#         print(f"Effect size: {abs(patched_sentiment - clean_sentiment):.3f}")
-
-#     except Exception as e:
-#         print(f"Patching error: {e}")
-#         import traceback
-#         traceback.print_exc()
-
-
-# # =============================================================================
-# # 10. FINAL COMPLETE IMPLEMENTATION
-# # =============================================================================
-
-# def main():
-#     """Main function with command line interface"""
-#     print("🎯 Stage 1: Lexical Detection Analysis")
-#     print("=" * 50)
-
-#     print("Available commands:")
-#     print("1. Run full analysis")
-#     print("2. Quick test")
-#     print("3. Test classifiers")
-#     print("4. Compare methods")
-#     print("5. Debug patching")
-#     print("6. Load and analyze results")
-
-#     try:
-#         #choice = input("\nSelect option (1-6): ").strip()
-
-#         run_stage1_complete_analysis(sentiment_method='probe')
-
-#         if choice == "1":
-#             method = input("Select method (simple/probe/external) [simple]: ").strip() or "simple"
-#             run_stage1_complete_analysis(sentiment_method=method)
-
-#         elif choice == "2":
-#             quick_test()
-
-#         elif choice == "3":
-#             test_sentiment_classifiers()
-
-#         elif choice == "4":
-#             compare_sentiment_methods()
-
-#         elif choice == "5":
-#             debug_patching_step_by_step()
-
-#         elif choice == "6":
-#             load_and_analyze_results()
-
-#         else:
-#             print("Invalid choice. Running quick test...")
-#             quick_test()
-
-#     except KeyboardInterrupt:
-#         print("\n👋 Analysis interrupted by user")
-#     except Exception as e:
-#         print(f"❌ Error: {e}")
-#         print("Running debug mode...")
-#         debug_patching_step_by_step()
-
-
-# # Run main if script is executed directly
-# if __name__ == "__main__":
-#     main()
