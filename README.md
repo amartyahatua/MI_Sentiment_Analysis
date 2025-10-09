@@ -88,40 +88,6 @@ pip install -r requirements.txt
 - plotly
 - tqdm
 
-## Usage
-
-### Running Lexical Detection Analysis
-
-```bash
-python activation_patching/phase_1/Lexical_Detection.py
-```
-
-This generates:
-- Layer sensitivity scores across all 12 layers
-- Position specificity analysis
-- Context independence measurements
-
-### Running Contextual Integration Analysis
-
-```bash
-python activation_patching/phase_2/Context_Integration.py
-```
-
-This generates:
-- Peak layer distribution across 14 context types
-- Layer importance gradients
-- Phenomenon-specific activation patterns
-
-### Generating Visualizations
-
-```python
-# Figure 4: Peak Layer Distribution
-python generate_figures.py --figure peak_distribution
-
-# Figure: Layer Importance Gradient
-python generate_figures.py --figure importance_gradient
-```
-
 ## Key Results
 
 ### Lexical Detection (Stage 1)
