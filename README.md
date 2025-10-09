@@ -44,7 +44,7 @@ We present a causal analysis of GPT-2's sentiment processing mechanisms using ac
 Controlled pairs testing context-independent sentiment word recognition:
 - Example: "The movie was wonderful" vs "The movie was terrible"
 
-### Contextual Integration Dataset (7,998 pairs)
+### Contextual Integration Dataset (8,000 pairs)
 14 contextual phenomena across diverse modification types:
 
 | Context Type | Code | Examples | Count |
@@ -155,10 +155,10 @@ python generate_figures.py --figure importance_gradient
 ## Citation
 
 ```bibtex
-@article{mechanistic_sentiment_2025,
+@inproceedings{hatua2025mechanistic,
   title={Mechanistic Interpretability of GPT-2: Lexical and Contextual Layers in Sentiment Analysis},
-  author={Anonymous},
-  journal={Submitted to NeurIPS 2025},
+  author={Hatua, Amartya},
+  booktitle={NeurIPS 2025 Workshop on Efficient Reasoning},
   year={2025}
 }
 ```
