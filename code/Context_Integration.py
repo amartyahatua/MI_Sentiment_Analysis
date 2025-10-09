@@ -13,7 +13,7 @@ import random
 import os
 
 my_seed = random.randint(1, 100)
-# my_seed = 6
+my_seed = 6
 print('Seed = ', my_seed)
 
 random.seed(my_seed)
@@ -44,7 +44,7 @@ class AllLayerContextualAnalyzer:
         """Generate diverse contextual test cases"""
         context_list = ['Intensity',  'Scale variation', 'Sarcasm', 'Domain context', 'Multiple intensifier', 'Complex double negation']
 
-        df_cases = pd.read_csv('../data/sentiment_2000_pairs.csv')
+        df_cases = pd.read_csv('../data/context_integration_2000_pairs.csv')
         df_cases = df_cases[['clean_text', 'corrupt_text', 'Context']]
         cases = {}
 
@@ -292,113 +292,7 @@ class AllLayerContextualAnalyzer:
         rankings = np.argsort(np.argsort(combined_effects)[::-1])
         return rankings
 
-    def create_comprehensive_visualizations(self, results: Dict[str, Any]) -> None:
-        """Create comprehensive visualizations for all-layer analysis"""
 
-        # Create a large figure with multiple subplots
-        fig, axes = plt.subplots(3, 4, figsize=(20, 15))
-        fig.suptitle('Comprehensive All-Layer Contextual Analysis', fontsize=16, fontweight='bold')
-
-        context_types = list(results.keys())
-        colors = plt.cm.Set3(np.linspace(0, 1, len(context_types)))
-
-        # 1. Consensus peak layers
-        consensus_layers = [results[ctx]['consensus']['consensus_layer'] for ctx in context_types]
-        agreement_scores = [results[ctx]['consensus']['agreement_score'] for ctx in context_types]
-
-        bars = axes[0,0].bar(context_types, consensus_layers, color=colors, alpha=0.7)
-        axes[0,0].set_title('Consensus Peak Layers')
-        axes[0,0].set_ylabel('Layer Number')
-        axes[0,0].tick_params(axis='x', rotation=45)
-
-        # Add agreement scores as text on bars
-        for bar, score in zip(bars, agreement_scores):
-            height = bar.get_height()
-            axes[0,0].text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                          f'{score:.2f}', ha='center', va='bottom', fontsize=8)
-
-        # 2. Layer effect heatmap across all contexts
-        heatmap_data = []
-        for ctx in context_types:
-            combined_effects = results[ctx]['consensus']['combined_effects']
-            heatmap_data.append(combined_effects)
-
-        sns.heatmap(heatmap_data, xticklabels=range(self.n_layers),
-                   yticklabels=context_types, cmap='viridis', ax=axes[0,1])
-        axes[0,1].set_title('Layer Effects Heatmap')
-        axes[0,1].set_xlabel('Layer')
-
-        # 3. Top 3 layers distribution
-        all_top3 = []
-        for ctx in context_types:
-            all_top3.extend(results[ctx]['consensus']['top_3_layers'])
-
-        layer_importance = np.bincount(all_top3, minlength=self.n_layers)
-        axes[0,2].bar(range(self.n_layers), layer_importance, color='skyblue', alpha=0.7)
-        axes[0,2].set_title('Layer Importance (Top-3 Frequency)')
-        axes[0,2].set_xlabel('Layer')
-        axes[0,2].set_ylabel('Frequency in Top-3')
-
-        # 4. Agreement score distribution
-        axes[0,3].hist(agreement_scores, bins=10, color='lightcoral', alpha=0.7, edgecolor='black')
-        axes[0,3].set_title('Agreement Score Distribution')
-        axes[0,3].set_xlabel('Agreement Score')
-        axes[0,3].set_ylabel('Frequency')
-
-        # 5-8. Individual context type detailed plots
-        for i, ctx in enumerate(context_types[:4]):
-            if i < 4:  # Only plot first 4 context types in detail
-                row = 1 + i // 2
-                col = i % 2
-
-                # Plot layer effects for all activation types
-                act_results = results[ctx]['activation_results']
-                for act_type, result in act_results.items():
-                    axes[row, col].plot(range(self.n_layers), result['avg_effects'],
-                                      label=act_type, marker='o', markersize=3, alpha=0.7)
-
-                axes[row, col].set_title(f'{ctx.capitalize()} - All Activation Types')
-                axes[row, col].set_xlabel('Layer')
-                axes[row, col].set_ylabel('Effect Magnitude')
-                axes[row, col].legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-                axes[row, col].grid(True, alpha=0.3)
-
-        # 9. Overall layer ranking
-        all_rankings = np.zeros(self.n_layers)
-        for ctx in context_types:
-            rankings = results[ctx]['layer_rankings']
-            all_rankings += rankings
-
-        avg_rankings = all_rankings / len(context_types)
-        sorted_layers = np.argsort(avg_rankings)
-
-        axes[2,2].bar(range(self.n_layers), avg_rankings[sorted_layers],
-                     color='gold', alpha=0.7)
-        axes[2,2].set_title('Average Layer Rankings (Lower = More Important)')
-        axes[2,2].set_xlabel('Layer (sorted by importance)')
-        axes[2,2].set_ylabel('Average Ranking')
-        axes[2,2].set_xticks(range(0, self.n_layers, 2))
-        axes[2,2].set_xticklabels(sorted_layers[::2])
-
-        # 10. Strongest layers summary
-        strongest_summary = {}
-        for ctx in context_types:
-            for layer, strength in results[ctx]['strongest_layers'][:3]:
-                strongest_summary[layer] = strongest_summary.get(layer, 0) + strength
-
-        if strongest_summary:
-            layers, strengths = zip(*sorted(strongest_summary.items(), key=lambda x: x[1], reverse=True)[:10])
-            axes[2,3].bar(range(len(layers)), strengths, color='purple', alpha=0.7)
-            axes[2,3].set_title('Top 10 Strongest Layers Overall')
-            axes[2,3].set_xlabel('Rank')
-            axes[2,3].set_ylabel('Combined Strength')
-            axes[2,3].set_xticks(range(len(layers)))
-            axes[2,3].set_xticklabels([f'L{layer}' for layer in layers], rotation=45)
-
-        plt.tight_layout()
-        plt.savefig('comprehensive_all_layer_analysis.png', dpi=300, bbox_inches='tight')
-        # plt.show()
-        # plt.savefig('Second_Phase_New_Code.png')
     def print_final_summary(self, results: Dict[str, Any]) -> None:
         """Print comprehensive final summary"""
 
@@ -433,8 +327,8 @@ class AllLayerContextualAnalyzer:
         for result in results.values():
             layer_importance += result['consensus']['combined_effects']
 
-        top_5_layers = np.argsort(layer_importance)[-5:][::-1]
-        print(f"\n🏆 TOP 5 MOST IMPORTANT LAYERS OVERALL:")
+        top_5_layers = np.argsort(layer_importance)[-12:][::-1]
+        print(f"\n🏆 TOP 12 MOST IMPORTANT LAYERS OVERALL:")
         for i, layer in enumerate(top_5_layers):
             print(f"  {i+1}. Layer {layer}: {layer_importance[layer]:.3f}")
 
@@ -454,9 +348,6 @@ class AllLayerContextualAnalyzer:
 
         # Run comprehensive analysis
         results = self.analyze_all_layers(cases)
-
-        # Create visualizations
-        self.create_comprehensive_visualizations(results)
 
         # Print final summary
         self.print_final_summary(results)
