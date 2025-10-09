@@ -183,7 +183,7 @@ MIT License - see LICENSE file for details
 
 ## Contact
 
-For questions or collaborations, please open an issue or contact [your-email@domain.com]
+For questions or collaborations, please open an issue or contact [amartyahatua@gmail.com]
 
 ## Acknowledgments
 
