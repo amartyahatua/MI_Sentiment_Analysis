@@ -68,8 +68,8 @@ Controlled pairs testing context-independent sentiment word recognition:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mechanistic-interpretability-gpt2
-cd mechanistic-interpretability-gpt2
+git clone https://github.com/amartyahatua/MI_Sentiment_Analysis.git
+cd MI_Sentiment_Analysis
 
 # Create conda environment
 conda create -n mechanistic_interpretability python=3.9
