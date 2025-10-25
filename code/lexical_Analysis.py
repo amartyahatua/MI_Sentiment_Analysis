@@ -19,8 +19,8 @@ import random
 from tqdm import  tqdm
 
 
-# my_seed = random.randint(1, 100)
-my_seed = 6
+my_seed = random.randint(1, 100)
+# my_seed = 6
 print('Seed = ', my_seed)
 
 random.seed(my_seed)
@@ -83,7 +83,7 @@ class LexicalTestSuite:
     def generate_lexical_pairs(self, num_pairs: int = 200) -> List[LexicalPair]:
         """Generate clean/corrupt pairs for lexical testing"""
         pairs = []
-        data = pd.read_csv('./sentiment_2000_pairs.csv')
+        data = pd.read_csv('../data/lexical_analysis_2000_pairs.csv')
         # Simple positive/negative swaps
         data = data.iloc[0:200,:]
         for i in range(data.shape[0]):

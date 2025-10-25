@@ -42,10 +42,9 @@ class AllLayerContextualAnalyzer:
 
     def generate_test_cases(self) -> Dict[str, List[Dict]]:
         """Generate diverse contextual test cases"""
-        context_list = ['Intensity',  'Scale variation', 'Sarcasm', 'Domain context', 'Multiple intensifier', 'Complex double negation']
-
         df_cases = pd.read_csv('../data/context_integration_2000_pairs.csv')
         df_cases = df_cases[['clean_text', 'corrupt_text', 'Context']]
+        context_list = df_cases['Context'].unique()
         cases = {}
 
         for context in context_list:
